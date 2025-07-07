@@ -1,52 +1,46 @@
 import argparse
+import sys
+import os
 import toml
 import torch
 import os
 from pathlib import Path
+from datetime import datetime
 
-from avdeepfake1m.loader import AVDeepfake1mDataModule, Metadata
-from batfd.model import Batfd, BatfdPlus
-from batfd.inference import inference_model
-from batfd.post_process import post_process
-from avdeepfake1m.utils import read_json
+# relative imports to root 
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, repo_root)
+from AVDeepfake1Mpp.code.loaders import AVDeepfake1mDataModule, Metadata
+from models.batfd.model import Batfd, BatfdPlus
+from models.batfd.inference import inference_model
+from models.batfd.post_process import post_process
+from AVDeepfake1Mpp.code.utils import read_json
 
-def main():
-    parser = argparse.ArgumentParser(description="BATFD/BATFD+ Inference")
-    parser.add_argument("--config", type=str, required=True,
-                        help="Path to the TOML configuration file.")
-    parser.add_argument("--checkpoint", type=str, required=True,
-                        help="Path to the model checkpoint.")
-    parser.add_argument("--data_root", type=str, required=True,
-                        help="Root directory of the dataset.")
-    parser.add_argument("--num_workers", type=int, default=8,
-                        help="Number of workers for data loading.")
-    parser.add_argument("--subset", type=str, choices=["val", "test", "testA", "testB"], 
-                        default="test", help="Dataset subset.")
-    parser.add_argument("--gpus", type=int, default=1,
-                        help="Number of GPUs. Set to 0 for CPU.")
-
-    args = parser.parse_args()
-
+def infer(args):
     # Determine device
-    if args.gpus > 0 and torch.cuda.is_available():
+    if args["gpus"] > 0 and torch.cuda.is_available():
         device = f"cuda:{torch.cuda.current_device()}"
     else:
         device = "cpu"
 
     print(f"Using device: {device}")
 
-    config = toml.load(args.config)
-    temp_dir = "output"
-    output_file = os.path.join(temp_dir, f"{config['name']}_{args.subset}.json")
+    config = toml.load(args["config"])
+
+    # Define paths relative to the root directory
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    temp_dir = os.path.join("output", config["name"], timestamp)
+    output_file = os.path.join(temp_dir, f"{config['name']}_{args['subset']}.json")
+
     model_type = config["model_type"]
 
     if model_type == "batfd_plus":
-        model = BatfdPlus.load_from_checkpoint(args.checkpoint)
+        model = BatfdPlus.load_from_checkpoint(args["checkpoint"])
     elif model_type == "batfd":
-        model = Batfd.load_from_checkpoint(args.checkpoint)
+        model = Batfd.load_from_checkpoint(args["checkpoint"])
     else:
         raise ValueError(f"Unknown model type: {model_type}")
-    
+
     model.eval()
 
     # Setup DataModule
@@ -54,26 +48,26 @@ def main():
     is_plusplus = dm_dataset_name == "avdeepfake1m++"
 
     dm = AVDeepfake1mDataModule(
-        root=args.data_root,
+        root=args["data_root"],
         temporal_size=config["num_frames"],
         max_duration=config["max_duration"],
         require_match_scores=False,
         batch_size=1, # due to the problem from lightning, only 1 is supported
-        num_workers=args.num_workers,
+        num_workers=args["num_workers"],
         get_meta_attr=model.get_meta_attr,
         return_file_name=True,
         is_plusplus=is_plusplus,
-        test_subset=args.subset if args.subset in ("test", "testA", "testB") else None
+        test_subset=args["subset"] if args["subset"] in ("test", "testA", "testB") else None
     )
     dm.setup()
 
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
     Path(temp_dir).mkdir(parents=True, exist_ok=True)
 
-    if args.subset in ("test", "testA", "testB"):
+    if args["subset"] in ("test", "testA", "testB"):
         dataloader = dm.test_dataloader()
-        metadata_path = os.path.join(dm.root, f"{args.subset}_metadata.json")
-    elif args.subset == "val":
+        metadata_path = os.path.join(dm.root, f"{args['subset']}_metadata.json")
+    elif args["subset"] == "val":
         dataloader = dm.val_dataloader()
         metadata_path = os.path.join(dm.root, "val_metadata.json")
     else:
@@ -85,7 +79,7 @@ def main():
         metadata = [
             Metadata(file=file_name, 
                      original=None,
-                     split=args.subset,
+                     split=args["subset"],
                      fake_segments=[],
                      fps=25,
                      visual_fake_segments=[],
@@ -105,7 +99,7 @@ def main():
         metadata=metadata,
         max_duration=config["max_duration"], 
         model_type=config["model_type"], 
-        gpus=args.gpus, 
+        gpus=args["gpus"], 
         temp_dir=temp_dir
     )
 
@@ -122,6 +116,26 @@ def main():
     )
 
     print(f"Inference complete. Results saved to {output_file}")
+
+
+# Update main to call infer(args)
+def main():
+    parser = argparse.ArgumentParser(description="BATFD/BATFD+ Inference")
+    parser.add_argument("--config", type=str, required=True,
+                        help="Path to the TOML configuration file.")
+    parser.add_argument("--checkpoint", type=str, required=True,
+                        help="Path to the model checkpoint.")
+    parser.add_argument("--data_root", type=str, required=True,
+                        help="Root directory of the dataset.")
+    parser.add_argument("--num_workers", type=int, default=8,
+                        help="Number of workers for data loading.")
+    parser.add_argument("--subset", type=str, choices=["val", "test", "testA", "testB"], 
+                        default="test", help="Dataset subset.")
+    parser.add_argument("--gpus", type=int, default=1,
+                        help="Number of GPUs. Set to 0 for CPU.")
+
+    args = parser.parse_args()
+    infer(vars(args))
 
 
 if __name__ == '__main__':

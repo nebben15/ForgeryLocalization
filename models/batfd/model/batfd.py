@@ -11,7 +11,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, repo_root)
-from dataloading.datasets import Metadata
+from AVDeepfake1Mpp.code.loaders import Metadata
 
 from .loss import ContrastLoss
 from .audio_encoder import get_audio_encoder

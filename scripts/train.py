@@ -15,7 +15,7 @@ repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, repo_root)
 from models.batfd.model import Batfd, BatfdPlus
 from models.batfd.utils import LrLogger, EarlyStoppingLR
-from dataloading.datasets import AVDeepfake1mDataModule
+from AVDeepfake1Mpp.code.loaders import AVDeepfake1mDataModule
 
 def train(args):
     config = toml.load(args["config"])
