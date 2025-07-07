@@ -1,4 +1,6 @@
 import json
+import sys
+import os
 import os.path
 from concurrent.futures import ProcessPoolExecutor
 from os import cpu_count
@@ -8,8 +10,10 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-from avdeepfake1m.loader import Metadata
-from avdeepfake1m.utils import iou_with_anchors
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, repo_root)
+from AVDeepfake1Mpp.code.loaders import Metadata
+from AVDeepfake1Mpp.code.utils import iou_with_anchors
 
 
 def soft_nms(df, alpha, t1, t2, fps):

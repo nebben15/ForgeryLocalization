@@ -27,10 +27,11 @@ def infer(args):
 
     config = toml.load(args["config"])
 
-    # Define paths relative to the root directory
+    # Define paths relative to the specified output directory
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    temp_dir = os.path.join("output", config["name"], timestamp)
-    output_file = os.path.join(temp_dir, f"{config['name']}_{args['subset']}.json")
+    temp_dir = os.path.join(args["output_dir"], config["name"], timestamp)
+    checkpoint_name = os.path.splitext(os.path.basename(args["checkpoint"]))[0]
+    output_file = os.path.join(temp_dir, f"{checkpoint_name}_{dm_dataset_name}_{args['subset']}.json")
 
     model_type = config["model_type"]
 
@@ -40,7 +41,7 @@ def infer(args):
         model = Batfd.load_from_checkpoint(args["checkpoint"])
     else:
         raise ValueError(f"Unknown model type: {model_type}")
-
+    print("Loaded model!")
     model.eval()
 
     # Setup DataModule
@@ -59,6 +60,7 @@ def infer(args):
         is_plusplus=is_plusplus,
         test_subset=args["subset"] if args["subset"] in ("test", "testA", "testB") else None
     )
+    print("Loaded DataModuel!")
     dm.setup()
 
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
@@ -127,6 +129,8 @@ def main():
                         help="Path to the model checkpoint.")
     parser.add_argument("--data_root", type=str, required=True,
                         help="Root directory of the dataset.")
+    parser.add_argument("--output_dir", type=str, required=True,
+                        help="Directory to save the output files.")
     parser.add_argument("--num_workers", type=int, default=8,
                         help="Number of workers for data loading.")
     parser.add_argument("--subset", type=str, choices=["val", "test", "testA", "testB"], 

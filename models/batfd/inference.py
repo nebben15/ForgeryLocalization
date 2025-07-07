@@ -1,4 +1,6 @@
 import os.path
+import sys
+import os
 from typing import Any, List, Optional
 import torch
 from torch import Tensor
@@ -7,7 +9,9 @@ from pathlib import Path
 from lightning.pytorch import LightningModule, Trainer, Callback
 from torch.utils.data import DataLoader
 
-from avdeepfake1m.loader import Metadata
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, repo_root)
+from AVDeepfake1Mpp.code.loaders import Metadata
 
 
 def nullable_index(obj, index):
