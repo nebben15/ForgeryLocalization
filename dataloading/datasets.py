@@ -104,8 +104,10 @@ class AVDeepfake1m(Dataset):
 
     def __getitem__(self, index: int) -> List[Union[Tensor, str, int]]:
         file = self.file_list[index]
+        #print(f"Reading video from: {os.path.join(self.root, self.subset, file)}")
 
         video, audio, _ = read_video(os.path.join(self.root, self.subset, file))
+        #print(f"Video shape: {video.shape}")
         n_frames = video.shape[0]
         video = F.interpolate(video.float().permute(1, 0, 2, 3)[None], size=(self.temporal_size, 96, 96))[0]
         audio = F.interpolate(audio.float().permute(1, 0)[None], size=self.audio_temporal_size, mode="linear")[0].permute(1, 0)
@@ -124,6 +126,7 @@ class AVDeepfake1m(Dataset):
             meta = Metadata(**meta, fps=self.fps)
             if not self.require_match_scores:
                 label, visual_label, audio_label = self.get_label(file, meta)
+                #print(label, visual_label, audio_label)
                 outputs = outputs + [label] + self.get_meta_attr(meta, video, audio, (label, visual_label, audio_label))
             else:
                 label, visual_label, audio_label = self.get_label(file, meta)
