@@ -31,7 +31,7 @@ def infer(args):
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     temp_dir = os.path.join(args["output_dir"], config["name"], timestamp)
     checkpoint_name = os.path.splitext(os.path.basename(args["checkpoint"]))[0]
-    output_file = os.path.join(temp_dir, f"{checkpoint_name}_{dm_dataset_name}_{args['subset']}.json")
+    output_file = os.path.join(temp_dir, f"{checkpoint_name}_{args['subset']}.json")
 
     model_type = config["model_type"]
 
@@ -60,7 +60,7 @@ def infer(args):
         is_plusplus=is_plusplus,
         test_subset=args["subset"] if args["subset"] in ("test", "testA", "testB") else None
     )
-    print("Loaded DataModuel!")
+    print("Loaded DataModule!")
     dm.setup()
 
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
@@ -76,7 +76,7 @@ def infer(args):
         raise ValueError("Invalid subset")
 
     if os.path.exists(metadata_path):
-        metadata = [Metadata(**each, fps=25) for each in read_json(metadata_path)]
+        metadata = [Metadata(**each) for each in read_json(metadata_path)]
     else:
         metadata = [
             Metadata(file=file_name, 
